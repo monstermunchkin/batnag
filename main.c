@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #define _VERSION_MAJOR 0
@@ -26,7 +27,8 @@ int get_battery_status(void);
 int nag(void);
 int warn(void);
 
-void usage(void) {
+void usage(void)
+{
 	fprintf(stderr,
 		"Low battery indicator using i3-nagbar.\n\n"
 		"Usage:\n"
@@ -42,7 +44,8 @@ void usage(void) {
 	exit(0);
 }
 
-void version(void) {
+void version(void)
+{
 	fprintf(stderr,
 		"batnag %d.%d\n",
 		_VERSION_MAJOR,
@@ -216,6 +219,7 @@ int nag(void)
 	for (;;) {
 		if (get_battery_status() == CHARGING) {
 			kill(pid, SIGTERM);
+			wait(NULL);
 			return 0;
 		}
 		/*
@@ -245,5 +249,6 @@ int warn(void)
 	/* close warning after X seconds */
 	sleep(10);
 	kill(pid, SIGTERM);
+	wait(NULL);
 	return 0;
 }
