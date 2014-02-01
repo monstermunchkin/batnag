@@ -1,28 +1,30 @@
 #include <getopt.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #define _VERSION_MAJOR 0
-#define _VERSION_MINOR 1
+#define _VERSION_MINOR 2
 
 #define BATSTAT "/sys/class/power_supply/BAT0/status"
 #define BATCAP "/sys/class/power_supply/BAT0/capacity"
 
 #define DFL_INTERVAL 60
 #define DFL_THRESHOLD 2
+#define DFL_WARN_THRESHOLD 5
 
 enum batstat {
 	CHARGING = 1,
 	DISCHARGING
 };
 
-void main_loop(int threshold, int interval);
+void main_loop(int threshold, int warn_threshold, int interval);
 int get_battery_capacity(void);
 int get_battery_status(void);
 int nag(void);
+int warn(void);
 
 void usage(void) {
 	fprintf(stderr,
@@ -35,6 +37,7 @@ void usage(void) {
 		"  -i --interval=<n>   Interval to check battery status\n"
 		"  -t --threshold=<n>  Critical battery level\n"
 		"  -v --version        Print version\n"
+		"  -w --warn=[<n>]     Send additional warning\n"
 	       );
 	exit(0);
 }
@@ -55,6 +58,7 @@ int main(int argc, char *argv[])
 	int option_index = 0;
 	int threshold = DFL_THRESHOLD;
 	int interval = DFL_INTERVAL;
+	int warn_threshold = 0;
 	pid_t pid = 0;
 	struct option long_options[] = {
 		{"daemon", no_argument, 0, 'd'},
@@ -62,11 +66,12 @@ int main(int argc, char *argv[])
 		{"interval", required_argument, 0, 'i'},
 		{"threshold", required_argument, 0, 't'},
 		{"version", no_argument, 0, 'v'},
+		{"warn", optional_argument, 0, 'w'},
 		{0, 0, 0, 0}
 	};
 
 	for (;;) {
-		c = getopt_long(argc, argv, "dhi:t:v", long_options,
+		c = getopt_long(argc, argv, "dhi:t:vw::", long_options,
 				&option_index);
 		if (c == -1) {
 			/* end of arguments */
@@ -87,6 +92,13 @@ int main(int argc, char *argv[])
 				break;
 			case 'v':
 				version();
+			case 'w':
+				if (optarg == NULL) {
+					warn_threshold = DFL_WARN_THRESHOLD;
+				} else {
+					warn_threshold = atoi(optarg);
+				}
+				break;
 			default:
 				usage();
 		}
@@ -102,14 +114,26 @@ int main(int argc, char *argv[])
 			return EXIT_SUCCESS;
 		}
 	}
-	main_loop(threshold, interval);
+
+	if (warn_threshold > 0 && threshold >= warn_threshold) {
+		fprintf(stderr,
+			"warning: "
+			"Additional warning will not be displayed if\n"
+			"         threshold is greater than warning_threshold "
+			"(%d >= %d).\n",
+			threshold, warn_threshold
+		       );
+	}
+
+	main_loop(threshold, warn_threshold, interval);
 	return EXIT_SUCCESS;
 }
 
-void main_loop(int threshold, int interval)
+void main_loop(int threshold, int warn_threshold, int interval)
 {
 	int cap = 0;
 	int _interval = interval;
+	int warned = 0;
 
 	for (;;) {
 		if (get_battery_status() == DISCHARGING) {
@@ -119,13 +143,20 @@ void main_loop(int threshold, int interval)
 				if (nag() == -1) {
 					continue;
 				}
-			} else if (cap < 10) {
+			} else if (!warned && cap <= warn_threshold) {
+				if (warn() == 0) {
+					warned = 1;
+				}
+			}
+			if (cap < 10) {
 				/* decrease interval */
 				_interval = 10;
 			}
 		} else {
 			/* reset interval */
 			_interval = interval;
+			/* reset warned status */
+			warned = 0;
 		}
 		sleep(_interval);
 	}
@@ -196,4 +227,23 @@ int nag(void)
 		}
 		sleep(1);
 	}
+}
+
+int warn(void)
+{
+	pid_t pid = fork();
+
+	if (pid == 0) {
+		/* child */
+		execl("/usr/bin/i3-nagbar", "i3-nagbar", "-t", "warning",
+			"-m", "Battery level is low.", NULL);
+		perror("exec");
+	} else if (pid == -1) {
+		return -1;
+	}
+
+	/* close warning after X seconds */
+	sleep(10);
+	kill(pid, SIGTERM);
+	return 0;
 }
