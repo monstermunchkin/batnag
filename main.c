@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #define _VERSION_MAJOR 0
-#define _VERSION_MINOR 2
+#define _VERSION_MINOR 3
 
 #define BATSTAT "/sys/class/power_supply/BAT0/status"
 #define BATCAP "/sys/class/power_supply/BAT0/capacity"
@@ -21,11 +21,18 @@ enum batstat {
 	DISCHARGING
 };
 
-void main_loop(int threshold, int warn_threshold, int interval);
+enum typenotify {
+	WARN = 1,
+	NAG
+};
+
+void main_loop(int threshold, int warn_threshold, int interval,
+		int notify_terminals);
 int get_battery_capacity(void);
 int get_battery_status(void);
-int nag(void);
-int warn(void);
+int nag(int notify_terminals);
+int warn(int notify_terminals);
+void wall(int type);
 
 void usage(void)
 {
@@ -37,6 +44,7 @@ void usage(void)
 		"  -d --daemon         Run in daemon mode\n"
 		"  -h --help           Show this\n"
 		"  -i --interval=<n>   Interval to check battery status\n"
+		"  -n --no-wall        Do not notify TTYs\n"
 		"  -t --threshold=<n>  Critical battery level\n"
 		"  -v --version        Print version\n"
 		"  -w --warn=[<n>]     Send additional warning\n"
@@ -58,6 +66,7 @@ int main(int argc, char *argv[])
 {
 	int c = 0;
 	int daemon_mode = 0;
+	int notify_terminals = 1;
 	int option_index = 0;
 	int threshold = DFL_THRESHOLD;
 	int interval = DFL_INTERVAL;
@@ -67,6 +76,7 @@ int main(int argc, char *argv[])
 		{"daemon", no_argument, 0, 'd'},
 		{"help", no_argument, 0, 'h'},
 		{"interval", required_argument, 0, 'i'},
+		{"no-wall", no_argument, 0, 'n'},
 		{"threshold", required_argument, 0, 't'},
 		{"version", no_argument, 0, 'v'},
 		{"warn", optional_argument, 0, 'w'},
@@ -74,7 +84,7 @@ int main(int argc, char *argv[])
 	};
 
 	for (;;) {
-		c = getopt_long(argc, argv, "dhi:t:vw::", long_options,
+		c = getopt_long(argc, argv, "dhi:nt:vw::", long_options,
 				&option_index);
 		if (c == -1) {
 			/* end of arguments */
@@ -89,6 +99,9 @@ int main(int argc, char *argv[])
 				return EXIT_SUCCESS;
 			case 'i':
 				interval = atoi(optarg);
+				break;
+			case 'n':
+				notify_terminals = 0;
 				break;
 			case 't':
 				threshold = atoi(optarg);
@@ -128,11 +141,12 @@ int main(int argc, char *argv[])
 		       );
 	}
 
-	main_loop(threshold, warn_threshold, interval);
+	main_loop(threshold, warn_threshold, interval, notify_terminals);
 	return EXIT_SUCCESS;
 }
 
-void main_loop(int threshold, int warn_threshold, int interval)
+void main_loop(int threshold, int warn_threshold, int interval,
+		int notify_terminals)
 {
 	int cap = 0;
 	int _interval = interval;
@@ -143,11 +157,12 @@ void main_loop(int threshold, int warn_threshold, int interval)
 			cap = get_battery_capacity();
 			if (cap < threshold) {
 				/* Skip sleep if nag fails. */
-				if (nag() == -1) {
+				if (nag(notify_terminals) == -1) {
 					continue;
 				}
 			} else if (!warned && cap <= warn_threshold) {
-				if (warn() == 0) {
+				if (warn(notify_terminals) == 0) {
+					/* do not warn again */
 					warned = 1;
 				}
 			}
@@ -199,9 +214,15 @@ int get_battery_status(void)
 	return status;
 }
 
-int nag(void)
+int nag(int notify_terminals)
 {
-	pid_t pid = fork();
+	pid_t pid = 0;
+
+	if (notify_terminals) {
+		wall(NAG);
+	}
+
+	pid = fork();
 
 	if (pid == 0) {
 		/* child */
@@ -233,9 +254,15 @@ int nag(void)
 	}
 }
 
-int warn(void)
+int warn(int notify_terminals)
 {
-	pid_t pid = fork();
+	pid_t pid = 0;
+
+	if (notify_terminals) {
+		wall(WARN);
+	}
+
+	pid = fork();
 
 	if (pid == 0) {
 		/* child */
@@ -250,5 +277,20 @@ int warn(void)
 	sleep(10);
 	kill(pid, SIGTERM);
 	wait(NULL);
+
 	return 0;
+}
+
+void wall(int type)
+{
+	char *template = "wall -t 10 'Battery level is %s.'";
+	char msg[43] = {0};
+
+	if (type == WARN) {
+		sprintf(msg, template, "low");
+	} else if (type == NAG) {
+		sprintf(msg, template, "critical");
+	}
+
+	system(msg);
 }
