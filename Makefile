@@ -8,7 +8,7 @@ clean:
 	rm -f *.o $(BIN)
 
 install: $(BIN)
-	install $< $(PREFIX)/bin
+	install -Dm 0755 $< $(PREFIX)/bin/$(BIN)
 
 $(BIN): main.o
 	$(CC) -o $@ $<
