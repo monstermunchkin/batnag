@@ -91,32 +91,32 @@ int main(int argc, char *argv[])
 			break;
 		}
 		switch (c) {
-			case 'd':
-				daemon_mode = 1;
-				break;
-			case 'h':
-				usage();
-				return EXIT_SUCCESS;
-			case 'i':
-				interval = atoi(optarg);
-				break;
-			case 'n':
-				notify_terminals = 0;
-				break;
-			case 't':
-				threshold = atoi(optarg);
-				break;
-			case 'v':
-				version();
-			case 'w':
-				if (optarg == NULL) {
-					warn_threshold = DFL_WARN_THRESHOLD;
-				} else {
-					warn_threshold = atoi(optarg);
-				}
-				break;
-			default:
-				usage();
+		case 'd':
+			daemon_mode = 1;
+			break;
+		case 'h':
+			usage();
+			return EXIT_SUCCESS;
+		case 'i':
+			interval = atoi(optarg);
+			break;
+		case 'n':
+			notify_terminals = 0;
+			break;
+		case 't':
+			threshold = atoi(optarg);
+			break;
+		case 'v':
+			version();
+		case 'w':
+			if (optarg == NULL) {
+				warn_threshold = DFL_WARN_THRESHOLD;
+			} else {
+				warn_threshold = atoi(optarg);
+			}
+			break;
+		default:
+			usage();
 		}
 	}
 
@@ -153,28 +153,29 @@ void main_loop(int threshold, int warn_threshold, int interval,
 	int warned = 0;
 
 	for (;;) {
-		if (get_battery_status() == DISCHARGING) {
-			cap = get_battery_capacity();
-			if (cap < threshold) {
-				/* Skip sleep if nag fails. */
-				if (nag(notify_terminals) == -1) {
-					continue;
-				}
-			} else if (!warned && cap <= warn_threshold) {
-				if (warn(notify_terminals) == 0) {
-					/* do not warn again */
-					warned = 1;
-				}
-			}
-			if (cap < 10) {
-				/* decrease interval */
-				_interval = 10;
-			}
-		} else {
+		if (get_battery_status() != DISCHARGING) {
 			/* reset interval */
 			_interval = interval;
 			/* reset warned status */
 			warned = 0;
+			sleep(_interval);
+			continue;
+		}
+		cap = get_battery_capacity();
+		if (cap < threshold) {
+			/* Skip sleep if nag fails. */
+			if (nag(notify_terminals) == -1) {
+				continue;
+			}
+		} else if (!warned && cap <= warn_threshold) {
+			if (warn(notify_terminals) == 0) {
+				/* do not warn again */
+				warned = 1;
+			}
+		}
+		if (cap < 10) {
+			/* decrease interval */
+			_interval = 10;
 		}
 		sleep(_interval);
 	}
