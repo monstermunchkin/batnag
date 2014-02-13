@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #define _VERSION_MAJOR 0
-#define _VERSION_MINOR 3
+#define _VERSION_MINOR 4
 
 #define BATSTAT "/sys/class/power_supply/BAT0/status"
 #define BATCAP "/sys/class/power_supply/BAT0/capacity"
@@ -217,6 +217,7 @@ int get_battery_status(void)
 
 int nag(int notify_terminals)
 {
+	int status = 0;
 	pid_t pid = 0;
 
 	if (notify_terminals) {
@@ -248,6 +249,7 @@ int nag(int notify_terminals)
 		 * If the child exited itself, close this [parent] function as
 		 * well.
 		 */
+		waitpid(-1, &status, WNOHANG);
 		if (kill(pid, 0) == -1) {
 			return -1;
 		}
