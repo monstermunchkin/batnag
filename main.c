@@ -9,8 +9,13 @@
 #define _VERSION_MAJOR 0
 #define _VERSION_MINOR 4
 
+#ifndef BATSTAT
 #define BATSTAT "/sys/class/power_supply/BAT0/status"
+#endif
+
+#ifndef BATCAP
 #define BATCAP "/sys/class/power_supply/BAT0/capacity"
+#endif
 
 #define DFL_INTERVAL 60
 #define DFL_THRESHOLD 2
