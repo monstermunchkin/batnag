@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #define _VERSION_MAJOR 0
-#define _VERSION_MINOR 4
+#define _VERSION_MINOR 5
 
 #ifndef BATSTAT
 #define BATSTAT "/sys/class/power_supply/BAT0/status"
@@ -35,7 +35,7 @@ void main_loop(int threshold, int warn_threshold, int interval,
 		int notify_terminals);
 int get_battery_capacity(void);
 int get_battery_status(void);
-int nag(int notify_terminals);
+int nag(int notify_terminals, int threshold);
 int warn(int notify_terminals);
 void wall(int type);
 
@@ -169,7 +169,7 @@ void main_loop(int threshold, int warn_threshold, int interval,
 		cap = get_battery_capacity();
 		if (cap <= threshold) {
 			/* Skip sleep if nag fails. */
-			if (nag(notify_terminals) == -1) {
+			if (nag(notify_terminals, threshold) == -1) {
 				continue;
 			}
 		} else if (!warned && cap <= warn_threshold) {
@@ -220,7 +220,7 @@ int get_battery_status(void)
 	return status;
 }
 
-int nag(int notify_terminals)
+int nag(int notify_terminals, int threshold)
 {
 	int status = 0;
 	pid_t pid = 0;
@@ -245,11 +245,13 @@ int nag(int notify_terminals)
 	 * battery status and kill the child if necessary.
 	 */
 	for (;;) {
-		if (get_battery_status() == CHARGING) {
+		if (get_battery_status() == CHARGING ||
+				get_battery_capacity() > threshold) {
 			kill(pid, SIGTERM);
 			wait(NULL);
 			return 0;
 		}
+
 		/*
 		 * If the child exited itself, close this [parent] function as
 		 * well.
