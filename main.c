@@ -167,7 +167,7 @@ void main_loop(int threshold, int warn_threshold, int interval,
 			continue;
 		}
 		cap = get_battery_capacity();
-		if (cap < threshold) {
+		if (cap <= threshold) {
 			/* Skip sleep if nag fails. */
 			if (nag(notify_terminals) == -1) {
 				continue;
