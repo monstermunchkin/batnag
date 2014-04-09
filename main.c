@@ -32,7 +32,7 @@ enum typenotify {
 };
 
 void main_loop(int threshold, int warn_threshold, int interval,
-		int notify_terminals);
+	       int notify_terminals);
 int get_battery_capacity(void);
 int get_battery_status(void);
 int nag(int notify_terminals, int threshold);
@@ -52,18 +52,13 @@ void usage(void)
 		"  -n --no-wall        Do not notify TTYs\n"
 		"  -t --threshold=<n>  Critical battery level\n"
 		"  -v --version        Print version\n"
-		"  -w --warn=[<n>]     Send additional warning\n"
-	       );
+		"  -w --warn=[<n>]     Send additional warning\n");
 	exit(0);
 }
 
 void version(void)
 {
-	fprintf(stderr,
-		"batnag %d.%d\n",
-		_VERSION_MAJOR,
-		_VERSION_MINOR
-	       );
+	fprintf(stderr, "batnag %d.%d\n", _VERSION_MAJOR, _VERSION_MINOR);
 	exit(0);
 }
 
@@ -141,17 +136,16 @@ int main(int argc, char *argv[])
 			"warning: "
 			"Additional warning will not be displayed if\n"
 			"         threshold is greater than warning_threshold "
-			"(%d >= %d).\n",
-			threshold, warn_threshold
-		       );
+			"(%d >= %d).\n", threshold, warn_threshold);
 	}
 
 	main_loop(threshold, warn_threshold, interval, notify_terminals);
+
 	return EXIT_SUCCESS;
 }
 
 void main_loop(int threshold, int warn_threshold, int interval,
-		int notify_terminals)
+	       int notify_terminals)
 {
 	int cap = 0;
 	int _interval = interval;
@@ -188,7 +182,7 @@ void main_loop(int threshold, int warn_threshold, int interval,
 
 int get_battery_capacity(void)
 {
-	char buf[4] = {0};
+	char buf[4] = { 0 };
 	int cap = 0;
 	FILE *f = fopen(BATCAP, "r");
 
@@ -203,7 +197,7 @@ int get_battery_capacity(void)
 
 int get_battery_status(void)
 {
-	char buf[16] = {0};
+	char buf[16] = { 0 };
 	int status = 0;
 	FILE *f = fopen(BATSTAT, "r");
 
@@ -234,7 +228,7 @@ int nag(int notify_terminals, int threshold)
 	if (pid == 0) {
 		/* child */
 		execl("/usr/bin/i3-nagbar", "i3-nagbar", "-t", "error",
-			"-m", "Battery level is critical.", NULL);
+		      "-m", "Battery level is critical.", NULL);
 		perror("exec");
 	} else if (pid == -1) {
 		return -1;
@@ -246,7 +240,7 @@ int nag(int notify_terminals, int threshold)
 	 */
 	for (;;) {
 		if (get_battery_status() == CHARGING ||
-				get_battery_capacity() > threshold) {
+		    get_battery_capacity() > threshold) {
 			kill(pid, SIGTERM);
 			wait(NULL);
 			return 0;
@@ -277,7 +271,7 @@ int warn(int notify_terminals)
 	if (pid == 0) {
 		/* child */
 		execl("/usr/bin/i3-nagbar", "i3-nagbar", "-t", "warning",
-			"-m", "Battery level is low.", NULL);
+		      "-m", "Battery level is low.", NULL);
 		perror("exec");
 	} else if (pid == -1) {
 		return -1;
@@ -294,7 +288,7 @@ int warn(int notify_terminals)
 void wall(int type)
 {
 	char *template = "wall -t 10 'Battery level is %s.'";
-	char msg[43] = {0};
+	char msg[43] = { 0 };
 
 	if (type == WARN) {
 		sprintf(msg, template, "low");
