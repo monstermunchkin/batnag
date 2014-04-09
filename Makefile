@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra -O2
+CFLAGS = -Wall -Wextra -Werror -O2
 PREFIX = /usr/local
 BIN = batnag
 
