@@ -184,10 +184,11 @@ int get_battery_capacity(void)
 {
 	char buf[4] = { 0 };
 	int cap = 0;
+	int unused __attribute__((unused));
 	FILE *f = fopen(BATCAP, "r");
 
 	if (f != NULL) {
-		fread(buf, sizeof(buf), 1, f);
+		unused = fread(buf, 1, sizeof(buf), f);
 		cap = atoi(buf);
 		fclose(f);
 	}
@@ -199,10 +200,11 @@ int get_battery_status(void)
 {
 	char buf[16] = { 0 };
 	int status = 0;
+	int unused __attribute__((unused));
 	FILE *f = fopen(BATSTAT, "r");
 
 	if (f != NULL) {
-		fread(buf, sizeof(buf), 1, f);
+		unused = fread(buf, 1, sizeof(buf), f);
 		if (strncmp(buf, "Charging", 8) == 0) {
 			status = CHARGING;
 		} else if (strncmp(buf, "Discharging", 11) == 0) {
@@ -289,6 +291,7 @@ void wall(int type)
 {
 	char *template = "wall -t 10 'Battery level is %s.'";
 	char msg[43] = { 0 };
+	int unused __attribute__((unused));
 
 	if (type == WARN) {
 		sprintf(msg, template, "low");
@@ -296,5 +299,5 @@ void wall(int type)
 		sprintf(msg, template, "critical");
 	}
 
-	system(msg);
+	unused = system(msg);
 }
