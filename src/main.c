@@ -65,8 +65,8 @@ inline void version(void)
 int main(int argc, char *argv[])
 {
 	int c = 0;
-	int daemon_mode = false;
-	int notify_terminals = true;
+	bool daemon_mode = false;
+	bool notify_terminals = true;
 	int option_index = 0;
 	int threshold = DFL_THRESHOLD;
 	int interval = DFL_INTERVAL;
@@ -149,7 +149,7 @@ void main_loop(int threshold, int warn_threshold, int interval,
 {
 	int cap = 0;
 	int _interval = interval;
-	int warned = false;
+	bool warned = false;
 
 	for (;;) {
 		if (get_battery_status() != DISCHARGING) {
