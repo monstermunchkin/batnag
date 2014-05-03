@@ -9,14 +9,6 @@
 
 #include "config.h"
 
-#ifndef BATSTAT
-#define BATSTAT "/sys/class/power_supply/BAT0/status"
-#endif
-
-#ifndef BATCAP
-#define BATCAP "/sys/class/power_supply/BAT0/capacity"
-#endif
-
 #define DFL_INTERVAL 60
 #define DFL_THRESHOLD 2
 #define DFL_WARN_THRESHOLD 5

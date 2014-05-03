@@ -27,6 +27,18 @@ AC_C_INLINE
 # Checks for library functions.
 AC_FUNC_FORK
 
+# Add preprocessor symbols.
+AS_IF([test "x$BATSTAT" = "x"],
+      AC_DEFINE([BATSTAT], ["/sys/class/power_supply/BAT0/status"],
+		[Battery status]),
+      AC_DEFINE_UNQUOTED([BATSTAT], ["$BATSTAT"], [Battery status]))
+AS_IF([test "x$BATCAP" = "x"],
+      AC_DEFINE([BATCAP], ["/sys/class/power_supply/BAT0/capacity"],
+		[Battery capacity]),
+      AC_DEFINE_UNQUOTED([BATCAP], ["$BATCAP"], [Battery capacity]))
+AC_ARG_VAR(BATSTAT, [Path to battery status (syspath)])
+AC_ARG_VAR(BATCAP, [Path to battery capacity (syspath)])
+
 AC_CONFIG_FILES([Makefile
                  src/Makefile])
 AC_OUTPUT
