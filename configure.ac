@@ -10,7 +10,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign subdir-objects -Wall -Werror])
 
 # Checks for programs.
-AC_PROG_CC_C99
+AC_PROG_CC
 AC_PROG_INSTALL
 
 # Checks for libraries.
