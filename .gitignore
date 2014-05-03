@@ -1,2 +1,16 @@
+*.cache
+*.log
 *.o
+*~
+.deps/
+.dirstamp
+/build-aux
+aclocal.m4
 batnag
+configure
+config.h
+config.h.in
+config.status
+Makefile
+Makefile.in
+stamp-*

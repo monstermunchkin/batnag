@@ -6,8 +6,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define _VERSION_MAJOR 0
-#define _VERSION_MINOR 5
+#include "config.h"
 
 #ifndef BATSTAT
 #define BATSTAT "/sys/class/power_supply/BAT0/status"
@@ -39,7 +38,7 @@ int nag(int notify_terminals, int threshold);
 int warn(int notify_terminals);
 void wall(int type);
 
-void usage(void)
+inline void usage(void)
 {
 	fprintf(stderr,
 		"Low battery indicator using i3-nagbar.\n\n"
@@ -56,9 +55,9 @@ void usage(void)
 	exit(0);
 }
 
-void version(void)
+inline void version(void)
 {
-	fprintf(stderr, "batnag %d.%d\n", _VERSION_MAJOR, _VERSION_MINOR);
+	fprintf(stderr, "%s\n", PACKAGE_STRING);
 	exit(0);
 }
 
@@ -184,7 +183,7 @@ int get_battery_capacity(void)
 {
 	char buf[4] = { 0 };
 	int cap = 0;
-	int unused __attribute__((unused));
+	int unused __attribute__ ((unused));
 	FILE *f = fopen(BATCAP, "r");
 
 	if (f != NULL) {
@@ -200,7 +199,7 @@ int get_battery_status(void)
 {
 	char buf[16] = { 0 };
 	int status = 0;
-	int unused __attribute__((unused));
+	int unused __attribute__ ((unused));
 	FILE *f = fopen(BATSTAT, "r");
 
 	if (f != NULL) {
@@ -291,7 +290,7 @@ void wall(int type)
 {
 	char *template = "wall -t 10 'Battery level is %s.'";
 	char msg[43] = { 0 };
-	int unused __attribute__((unused));
+	int unused __attribute__ ((unused));
 
 	if (type == WARN) {
 		sprintf(msg, template, "low");
