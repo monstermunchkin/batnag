@@ -1,5 +1,6 @@
 #include <getopt.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -64,8 +65,8 @@ inline void version(void)
 int main(int argc, char *argv[])
 {
 	int c = 0;
-	int daemon_mode = 0;
-	int notify_terminals = 1;
+	int daemon_mode = false;
+	int notify_terminals = true;
 	int option_index = 0;
 	int threshold = DFL_THRESHOLD;
 	int interval = DFL_INTERVAL;
@@ -91,7 +92,7 @@ int main(int argc, char *argv[])
 		}
 		switch (c) {
 		case 'd':
-			daemon_mode = 1;
+			daemon_mode = true;
 			break;
 		case 'h':
 			usage();
@@ -100,7 +101,7 @@ int main(int argc, char *argv[])
 			interval = atoi(optarg);
 			break;
 		case 'n':
-			notify_terminals = 0;
+			notify_terminals = false;
 			break;
 		case 't':
 			threshold = atoi(optarg);
@@ -148,14 +149,14 @@ void main_loop(int threshold, int warn_threshold, int interval,
 {
 	int cap = 0;
 	int _interval = interval;
-	int warned = 0;
+	int warned = false;
 
 	for (;;) {
 		if (get_battery_status() != DISCHARGING) {
 			/* reset interval */
 			_interval = interval;
 			/* reset warned status */
-			warned = 0;
+			warned = false;
 			sleep(_interval);
 			continue;
 		}
@@ -168,7 +169,7 @@ void main_loop(int threshold, int warn_threshold, int interval,
 		} else if (!warned && cap <= warn_threshold) {
 			if (warn(notify_terminals) == 0) {
 				/* do not warn again */
-				warned = 1;
+				warned = true;
 			}
 		}
 		if (cap < 10) {
