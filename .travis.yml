@@ -1,6 +1,8 @@
 language: c
 
-script: make
+script:
+  - ./autogen.sh
+  - ./configure && make
 
 compiler:
   - clang
