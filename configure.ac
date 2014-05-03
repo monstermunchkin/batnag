@@ -17,7 +17,8 @@ AC_PROG_INSTALL
 
 # Checks for header files.
 AC_CHECK_HEADERS([getopt.h signal.h stdbool.h stdio.h stdlib.h string.h \
-		  sys/wait.h unistd.h])
+		  sys/wait.h unistd.h], [],
+AC_MSG_ERROR([could not include header file]))
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_PID_T
