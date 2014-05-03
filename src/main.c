@@ -31,7 +31,7 @@ int nag(int notify_terminals, int threshold);
 int warn(int notify_terminals);
 void wall(int type);
 
-inline void usage(void)
+static inline void usage(void)
 {
 	fprintf(stderr,
 		"Low battery indicator using i3-nagbar.\n\n"
@@ -48,7 +48,7 @@ inline void usage(void)
 	exit(0);
 }
 
-inline void version(void)
+static inline void version(void)
 {
 	fprintf(stderr, "%s\n", PACKAGE_STRING);
 	exit(0);
