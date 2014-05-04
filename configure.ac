@@ -14,6 +14,13 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_INSTALL
 
+# Check for i3-nagbar.
+AC_DEFUN([AC_PROG_I3_NAGBAR], [AC_CHECK_PROG(I3NAGBAR, i3-nagbar, yes)])
+AC_PROG_I3_NAGBAR
+if test "x$I3NAGBAR" != "xyes"; then
+	AC_MSG_ERROR([Please install i3-nagbar (part of i3).])
+fi
+
 # Checks for libraries.
 
 # Checks for header files.
