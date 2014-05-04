@@ -7,3 +7,8 @@ script:
 compiler:
   - clang
   - gcc
+
+branches:
+  only:
+    - master
+    - develop
