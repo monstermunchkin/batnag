@@ -24,11 +24,11 @@ enum typenotify {
 };
 
 void main_loop(int threshold, int warn_threshold, int interval,
-	       int notify_terminals);
+	       bool notify_terminals);
 int get_battery_capacity(void);
 int get_battery_status(void);
-int nag(int notify_terminals, int threshold);
-int warn(int notify_terminals);
+int nag(bool notify_terminals, int threshold);
+int warn(bool notify_terminals);
 void wall(int type);
 
 static inline void usage(void)
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
 }
 
 void main_loop(int threshold, int warn_threshold, int interval,
-	       int notify_terminals)
+	       bool notify_terminals)
 {
 	int cap = 0;
 	int _interval = interval;
@@ -208,7 +208,7 @@ int get_battery_status(void)
 	return status;
 }
 
-int nag(int notify_terminals, int threshold)
+int nag(bool notify_terminals, int threshold)
 {
 	int status = 0;
 	pid_t pid = 0;
@@ -252,7 +252,7 @@ int nag(int notify_terminals, int threshold)
 	}
 }
 
-int warn(int notify_terminals)
+int warn(bool notify_terminals)
 {
 	pid_t pid = 0;
 
