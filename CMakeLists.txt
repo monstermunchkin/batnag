@@ -5,7 +5,7 @@ include(CheckIncludeFile)
 include(FindPkgConfig)
 
 # project(batnag VERSION 0.6 LANGUAGES C)
-project(batnag LANGUAGES C)
+project(batnag C)
 set(PROJECT_VERSION 0.6)
 
 check_include_file(errno.h HAVE_ERRNO_H)
