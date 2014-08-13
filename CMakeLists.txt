@@ -20,7 +20,8 @@ check_include_file(strings.h HAVE_STRING_H)
 check_include_file(sys/wait.h HAVE_SYS_WAIT_H)
 check_include_file(unistd.h HAVE_UNISTD_H)
 
-add_compile_options(-D_POSIX_C_SOURCE=200809L -std=c99 -Wall -Wextra -Wpedantic -Werror -O2 -g)
+#add_compile_options(-D_POSIX_C_SOURCE=200809L -std=c99 -Wall -Wextra -Wpedantic -Werror -O2 -g)
+set(CMAKE_C_FLAGS "-D_POSIX_C_SOURCE=200809L -std=c99 -Wall -Wextra -Wpedantic -Werror -O2 -g")
 
 # config.h
 set(BATSTAT /sys/class/power_supply/BAT0/status)
