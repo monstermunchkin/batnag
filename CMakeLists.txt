@@ -7,6 +7,7 @@ include(FindPkgConfig)
 # project(batnag VERSION 0.6 LANGUAGES C)
 project(batnag LANGUAGES C)
 set(PROJECT_VERSION 0.6)
+enable_language(C)
 
 check_include_file(errno.h HAVE_ERRNO_H)
 check_include_file(getopt.h HAVE_GETOPT_H)
