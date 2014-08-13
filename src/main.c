@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,27 +9,12 @@
 #include <unistd.h>
 
 #include "config.h"
+#include "nagbar.h"
 
-#define DFL_INTERVAL 60
-#define DFL_THRESHOLD 2
-#define DFL_WARN_THRESHOLD 5
-
-enum batstat {
-	CHARGING = 1,
-	DISCHARGING
-};
-
-enum typenotify {
-	WARN = 1,
-	NAG
-};
-
-void main_loop(int threshold, int warn_threshold, int interval,
-	       int notify_terminals);
-int get_battery_capacity(void);
-int get_battery_status(void);
-int nag(int notify_terminals, int threshold);
-int warn(int notify_terminals);
+void main_loop(int interval, bool notify_terminals,
+	       const struct mods *mods);
+int nag(bool notify_terminals, const struct bn_module *mod);
+int warn(bool notify_terminals, const struct bn_module *mod);
 void wall(int type);
 
 static inline void usage(void)
@@ -42,16 +28,36 @@ static inline void usage(void)
 		"  -h --help           Show this\n"
 		"  -i --interval=<n>   Interval to check battery status\n"
 		"  -n --no-wall        Do not notify TTYs\n"
-		"  -t --threshold=<n>  Critical battery level\n"
+		"  --mods              Show available modules\n"
+		"  --nag=<mod>         Use <mod> as nagger (defaults to"
+		" `nagbar' if applicable)\n"
+		"  --tn=<n>            Critical battery level\n"
+		"  --tw=<n>            Warning battery level\n"
 		"  -v --version        Print version\n"
-		"  -w --warn=[<n>]     Send additional warning\n");
+		"  --warn=<mod>        use <mod> as warner\n");
 	exit(0);
 }
 
 static inline void version(void)
 {
-	fprintf(stderr, "%s\n", PACKAGE_STRING);
+	fprintf(stderr, "%s\n", PROJECT_VERSION);
 	exit(0);
+}
+
+static inline void handle_long_option(struct option *options, int opt_index,
+				      struct mods *mods)
+{
+	if (strncmp("mods", options[opt_index].name, 4) == 0) {
+		// TODO: list available modules
+	} else if (strncmp("nag", options[opt_index].name, 3) == 0) {
+		mods->nag = bn_get_module(optarg);
+	} else if (strncmp("tn", options[opt_index].name, 2) == 0) {
+		set_nag_threshold((uint8_t) atoi(optarg));
+	} else if (strncmp("tw", options[opt_index].name, 2) == 0) {
+		set_warn_threshold((uint8_t) atoi(optarg));
+	} else if (strncmp("warn", options[opt_index].name, 4) == 0) {
+		mods->warn = bn_get_module(optarg);
+	}
 }
 
 int main(int argc, char *argv[])
@@ -60,18 +66,22 @@ int main(int argc, char *argv[])
 	bool daemon_mode = false;
 	bool notify_terminals = true;
 	int option_index = 0;
-	int threshold = DFL_THRESHOLD;
 	int interval = DFL_INTERVAL;
-	int warn_threshold = 0;
 	pid_t pid = 0;
+	struct mods mods = {
+		.nag = bn_get_module("nagbar"),
+		.warn = NULL,
+	};
 	struct option long_options[] = {
 		{"daemon", no_argument, 0, 'd'},
 		{"help", no_argument, 0, 'h'},
 		{"interval", required_argument, 0, 'i'},
+		{"nag", required_argument, 0, 0},
 		{"no-wall", no_argument, 0, 'n'},
-		{"threshold", required_argument, 0, 't'},
+		{"tn", required_argument, 0, 0},
+		{"tw", required_argument, 0, 0},
 		{"version", no_argument, 0, 'v'},
-		{"warn", optional_argument, 0, 'w'},
+		{"warn", required_argument, 0, 0},
 		{0, 0, 0, 0}
 	};
 
@@ -83,6 +93,10 @@ int main(int argc, char *argv[])
 			break;
 		}
 		switch (c) {
+		case 0:
+			handle_long_option(long_options, option_index,
+					   &mods);
+			break;
 		case 'd':
 			daemon_mode = true;
 			break;
@@ -95,24 +109,26 @@ int main(int argc, char *argv[])
 		case 'n':
 			notify_terminals = false;
 			break;
-		case 't':
-			threshold = atoi(optarg);
-			break;
 		case 'v':
 			version();
-		case 'w':
-			if (optarg == NULL) {
-				warn_threshold = DFL_WARN_THRESHOLD;
-			} else {
-				warn_threshold = atoi(optarg);
-			}
-			break;
 		default:
 			usage();
 		}
 	}
 
-	if (daemon_mode == 1) {
+	/*
+	 * We need either mods.nag or mods.warn, otherwise this program
+	 * is totally useless.
+	 */
+	if (!(mods.nag || mods.warn))
+	{
+		fputs("No module selected. Please make sure the modules are"
+		      " enabled and/or you have\nselected one.\n\n",
+		      stderr);
+		usage();
+	}
+
+	if (daemon_mode) {
 		pid = fork();
 		if (pid == -1) {
 			perror("fork");
@@ -123,23 +139,46 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (warn_threshold > 0 && threshold >= warn_threshold) {
+	uint32_t tn = get_nag_threshold();
+	uint32_t tw = get_warn_threshold();
+
+	if (tw > 0 && tn >= tw) {
 		fprintf(stderr,
 			"warning: "
 			"Additional warning will not be displayed if\n"
 			"         threshold is greater than warning_threshold "
-			"(%d >= %d).\n", threshold, warn_threshold);
+			"(%d >= %d).\n", tn, tw);
 	}
 
-	main_loop(threshold, warn_threshold, interval, notify_terminals);
+	if (mods.nag) {
+		if (mods.nag->init()) {
+			fputs("Failed to initialize module\n", stderr);
+		}
+
+		if (atexit(mods.nag->cleanup) != 0) {
+			fputs("Failed to register cleanup function\n", stderr);
+		}
+	}
+
+	if (mods.warn) {
+		if (mods.warn->init()) {
+			fputs("Failed to initialize module\n", stderr);
+		}
+
+		if (atexit(mods.warn->cleanup) != 0) {
+			fputs("Failed to register cleanup function\n", stderr);
+		}
+	}
+
+	main_loop(interval, notify_terminals, &mods);
 
 	return EXIT_SUCCESS;
 }
 
-void main_loop(int threshold, int warn_threshold, int interval,
-	       int notify_terminals)
+void main_loop(int interval, bool notify_terminals,
+	       const struct mods *mods)
 {
-	int cap = 0;
+	uint32_t cap = 0;
 	int _interval = interval;
 	bool warned = false;
 
@@ -153,13 +192,20 @@ void main_loop(int threshold, int warn_threshold, int interval,
 			continue;
 		}
 		cap = get_battery_capacity();
-		if (cap <= threshold) {
+		/*
+		 * The threshold should be obtained by calling
+		 * get_nag_threshold() directly and not by a function
+		 * argument, since mods->nag() could change this value.
+		 * The same applies to get_warn_threshold().
+		 */
+		if (cap <= get_nag_threshold()) {
 			/* Skip sleep if nag fails. */
-			if (nag(notify_terminals, threshold) == -1) {
+			if (nag(notify_terminals, mods->nag) == -1) {
 				continue;
 			}
-		} else if (!warned && cap <= warn_threshold) {
-			if (warn(notify_terminals) == 0) {
+		} else if (mods->warn != NULL && !warned &&
+			   cap <= get_warn_threshold()) {
+			if (warn(notify_terminals, mods->warn) == 0) {
 				/* do not warn again */
 				warned = true;
 			}
@@ -172,111 +218,22 @@ void main_loop(int threshold, int warn_threshold, int interval,
 	}
 }
 
-int get_battery_capacity(void)
+int nag(bool notify_terminals, const struct bn_module *mod)
 {
-	char buf[4] = { 0 };
-	int cap = 0;
-	int unused __attribute__ ((unused));
-	FILE *f = fopen(BATCAP, "r");
-
-	if (f != NULL) {
-		unused = fread(buf, 1, sizeof(buf), f);
-		cap = atoi(buf);
-		fclose(f);
-	}
-
-	return cap;
-}
-
-int get_battery_status(void)
-{
-	char buf[16] = { 0 };
-	int status = 0;
-	int unused __attribute__ ((unused));
-	FILE *f = fopen(BATSTAT, "r");
-
-	if (f != NULL) {
-		unused = fread(buf, 1, sizeof(buf), f);
-		if (strncmp(buf, "Charging", 8) == 0) {
-			status = CHARGING;
-		} else if (strncmp(buf, "Discharging", 11) == 0) {
-			status = DISCHARGING;
-		}
-		fclose(f);
-	}
-
-	return status;
-}
-
-int nag(int notify_terminals, int threshold)
-{
-	int status = 0;
-	pid_t pid = 0;
-
 	if (notify_terminals) {
 		wall(NAG);
 	}
 
-	pid = fork();
-
-	if (pid == 0) {
-		/* child */
-		execl("/usr/bin/i3-nagbar", "i3-nagbar", "-t", "error",
-		      "-m", "Battery level is critical.", NULL);
-		perror("exec");
-	} else if (pid == -1) {
-		return -1;
-	}
-
-	/*
-	 * Do not wait for the child to exit. Instead constantly check the
-	 * battery status and kill the child if necessary.
-	 */
-	for (;;) {
-		if (get_battery_status() == CHARGING ||
-		    get_battery_capacity() > threshold) {
-			kill(pid, SIGTERM);
-			wait(NULL);
-			return 0;
-		}
-
-		/*
-		 * If the child exited itself, close this [parent] function as
-		 * well.
-		 */
-		waitpid(-1, &status, WNOHANG);
-		if (kill(pid, 0) == -1) {
-			return -1;
-		}
-		sleep(1);
-	}
+	return mod->nag();
 }
 
-int warn(int notify_terminals)
+int warn(bool notify_terminals, const struct bn_module *mod)
 {
-	pid_t pid = 0;
-
 	if (notify_terminals) {
 		wall(WARN);
 	}
 
-	pid = fork();
-
-	if (pid == 0) {
-		/* child */
-		execl("/usr/bin/i3-nagbar", "i3-nagbar", "-t", "warning",
-		      "-m", "Battery level is low.", NULL);
-		perror("exec");
-	} else if (pid == -1) {
-		return -1;
-	}
-
-	/* close warning after X seconds */
-	sleep(10);
-	kill(pid, SIGTERM);
-	wait(NULL);
-
-	return 0;
+	return mod->warn();
 }
 
 void wall(int type)
