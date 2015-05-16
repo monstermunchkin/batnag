@@ -16,6 +16,7 @@ void main_loop(int interval, bool notify_terminals,
 int nag(bool notify_terminals, const struct bn_module *mod);
 int warn(bool notify_terminals, const struct bn_module *mod);
 void wall(int type);
+void handle_exit(int sig);
 
 static inline void usage(void)
 {
@@ -170,6 +171,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	signal(SIGTERM, handle_exit);
+	signal(SIGINT, handle_exit);
 	main_loop(interval, notify_terminals, &mods);
 
 	return EXIT_SUCCESS;
@@ -249,4 +252,9 @@ void wall(int type)
 	}
 
 	unused = system(msg);
+}
+
+void handle_exit(int sig __attribute__((unused)))
+{
+	exit(0);
 }
