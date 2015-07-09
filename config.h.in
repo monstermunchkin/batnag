@@ -9,4 +9,6 @@
 #cmakedefine USE_NAGBAR
 #cmakedefine USE_LIBNOTIFY
 
+#define PID_FILE "@PID_FILE@"
+
 #endif // CONFIG_H

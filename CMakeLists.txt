@@ -17,6 +17,7 @@ check_include_file(stdio.h HAVE_STDIO_H)
 check_include_file(stdlib.h HAVE_STDLIB_H)
 check_include_file(string.h HAVE_STRING_H)
 check_include_file(strings.h HAVE_STRING_H)
+check_include_file(sys/file.h HAVE_SYS_FILE_H)
 check_include_file(sys/wait.h HAVE_SYS_WAIT_H)
 check_include_file(unistd.h HAVE_UNISTD_H)
 
@@ -26,9 +27,10 @@ set(CMAKE_C_FLAGS "-D_POSIX_C_SOURCE=200809L -std=c99 -Wall -Wextra -Werror -ped
 # config.h
 set(BATSTAT /sys/class/power_supply/BAT0/status)
 set(BATCAP /sys/class/power_supply/BAT0/capacity)
+set(PID_FILE /tmp/batnag.pid)
 
 # set main source files
-set(SRCS src/main.c src/nagbar.c)
+set(SRCS ${CMAKE_SOURCE_DIR}/src/main.c ${CMAKE_SOURCE_DIR}/src/nagbar.c)
 
 # options
 option(USE_NAGBAR "enable i3-nagbar" ON)
@@ -38,7 +40,7 @@ option(USE_LIBNOTIFY "enable libnotify" ON)
 if(USE_NAGBAR)
 	find_program(NAGBAR i3-nagbar)
 	if(NAGBAR)
-		set(SRCS ${SRCS} src/mod-nagbar.c)
+		set(SRCS ${SRCS} ${CMAKE_SOURCE_DIR}/src/mod-nagbar.c)
 	else(NAGBAR)
 		set(USE_NAGBAR OFF)
 	endif(NAGBAR)
@@ -48,7 +50,7 @@ endif(USE_NAGBAR)
 if(USE_LIBNOTIFY)
 	pkg_check_modules(LIBNOTIFY libnotify)
 	if(LIBNOTIFY_FOUND)
-		set(SRCS ${SRCS} src/mod-libnotify.c)
+		set(SRCS ${SRCS} ${CMAKE_SOURCE_DIR}/src/mod-libnotify.c)
 		include_directories(${LIBNOTIFY_INCLUDE_DIRS})
 		set(EXTRA_LIBS ${LIBNOTIFY_LIBRARIES})
 	else(LIBNOTIFY_FOUND)
@@ -56,7 +58,7 @@ if(USE_LIBNOTIFY)
 	endif(LIBNOTIFY_FOUND)
 endif(USE_LIBNOTIFY)
 
-configure_file("config.h.in" src/config.h)
+configure_file("config.h.in"  ${CMAKE_SOURCE_DIR}/src/config.h)
 add_executable(batnag ${SRCS})
 target_link_libraries(batnag ${EXTRA_LIBS})
 

@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <getopt.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -5,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -61,6 +63,8 @@ static inline void handle_long_option(struct option *options, int opt_index,
 	}
 }
 
+static int pid_file;
+
 int main(int argc, char *argv[])
 {
 	int c = 0;
@@ -85,6 +89,17 @@ int main(int argc, char *argv[])
 		{"warn", required_argument, 0, 0},
 		{0, 0, 0, 0}
 	};
+
+	// allow one instance only
+	if ((pid_file = open(PID_FILE, O_CREAT | O_RDWR, 0666)) < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	if (flock(pid_file, LOCK_EX | LOCK_NB) && EWOULDBLOCK == errno) {
+		perror("flock");
+		exit(1);
+	}
 
 	for (;;) {
 		c = getopt_long(argc, argv, "dhi:nt:vw::", long_options,
@@ -256,5 +271,10 @@ void wall(int type)
 
 void handle_exit(int sig __attribute__((unused)))
 {
+	if (pid_file > 0) {
+		flock(pid_file, LOCK_UN);
+		remove(PID_FILE);
+	}
+
 	exit(0);
 }
